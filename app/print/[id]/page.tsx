@@ -1,6 +1,4 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-import { RUNS_DIR } from "@/lib/tools";
+import { getObject } from "@/lib/storage";
 import PrintReport from "./PrintReport";
 import type { Report } from "@/lib/types";
 
@@ -20,9 +18,8 @@ export default async function PrintPage({
   const { theme } = await searchParams;
   let report: Report | null = null;
   if (/^[a-zA-Z0-9._-]+$/.test(id)) {
-    try {
-      report = JSON.parse(await readFile(path.join(RUNS_DIR, id, "report.json"), "utf8"));
-    } catch {}
+    const buf = await getObject(`${id}/report.json`);
+    if (buf) { try { report = JSON.parse(buf.toString("utf8")); } catch {} }
   }
   if (!report) return <div className="p-10 mono">Report not found.</div>;
   return <PrintReport report={report} theme={theme || "sentinel"} />;

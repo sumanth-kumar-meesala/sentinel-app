@@ -69,7 +69,30 @@ without them.
 - **Download PDF** — browser print-to-PDF of the report only (print CSS hides the UI chrome).
 - **Evidence (.zip)** — all raw tool output for the run (`report.json`, breach JSON, subdomains, emails, nuclei JSON…).
 
-Scan output is written to `runs/<runId>/` (gitignored).
+Scan output is written to `runs/<runId>/` (gitignored). On a single instance
+that is all you need. For a multi-instance deployment see below.
+
+## Deployment (Cloud Run / multi-instance)
+
+Each instance has its own ephemeral disk, so a report written on the instance
+that ran the scan is invisible to the instance that later serves a download —
+downloads then work for whoever ran the scan but 404 for everyone else. To fix
+this, point the app at a shared bucket:
+
+- Set `GCS_BUCKET=<your-bucket>`. When set, `report.json`, `findings.csv` and the
+  evidence `.zip` are mirrored to that bucket at scan finalize, and every read
+  route (report / CSV / evidence / PDF / trends) reads back from it. Unset =
+  local `runs/` dir (dev). Auth uses the runtime service account via the
+  metadata server — no key file needed.
+- Grant the Cloud Run **runtime service account** `roles/storage.objectAdmin`
+  on the bucket.
+- `RUNS_DIR` (optional) overrides the local scratch dir used for CLI tool I/O.
+
+The scan itself shells out to CLIs (`subfinder`, `httpx`, `dnstwist`, `nuclei`,
+`trufflehog`, `gitleaks`, `cloud_enum`, `gh`, `zip`) and renders PDFs with a
+bundled Chromium. **Any of these missing from the container image makes the
+corresponding phase silently skip** — the other main cause of "inconsistent
+results" across deploys. Bake the tools you rely on into the image.
 
 ## Notes / limits
 

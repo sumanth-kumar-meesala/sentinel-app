@@ -1,6 +1,4 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-import { RUNS_DIR } from "@/lib/tools";
+import { getObject } from "@/lib/storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,10 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   if (!/^[a-zA-Z0-9._-]+$/.test(id)) return new Response("bad id", { status: 400 });
-  try {
-    const j = await readFile(path.join(RUNS_DIR, id, "report.json"), "utf8");
-    return new Response(j, { headers: { "Content-Type": "application/json" } });
-  } catch {
-    return new Response("not found", { status: 404 });
-  }
+  const buf = await getObject(`${id}/report.json`);
+  if (!buf) return new Response("not found", { status: 404 });
+  return new Response(new Uint8Array(buf), { headers: { "Content-Type": "application/json" } });
 }

@@ -4,7 +4,8 @@ import path from "node:path";
 import { readFile } from "node:fs/promises";
 import { ScanEvent, Report, Finding, Severity, PHASES } from "./types";
 import { run, have, ensureRunDir, saveEvidence, fetchText } from "./tools";
-import { computeAnalytics, findPriorRun, toCsv } from "./score";
+import { computeAnalytics, toCsv } from "./score";
+import { findPriorRun, persistRun } from "./storage";
 
 let counter = 0;
 const fid = () => `f${++counter}`;
@@ -123,7 +124,7 @@ export async function* runScan(domain: string, opts: ScanOpts): AsyncGenerator<S
       `https://cavalier.hudsonrock.com/api/json/v2/osint-tools/search-by-domain?domain=${encodeURIComponent(domain)}`
     );
     if (!raw) {
-      yield { type: "phase", id: "breach", status: "done", note: "service unreachable" };
+      yield { type: "log", phase: "breach", message: "Hudson Rock infostealer API unreachable — skipping" };
     } else {
       const ev = await saveEvidence(dir, "hudsonrock-domain.json", raw);
       yield push({ type: "evidence", file: ev });
@@ -159,8 +160,37 @@ export async function* runScan(domain: string, opts: ScanOpts): AsyncGenerator<S
       } catch {
         yield { type: "log", phase: "breach", message: "could not parse breach response" };
       }
-      yield { type: "phase", id: "breach", status: "done" };
     }
+
+    // ---- ProxyNova COMB: supplementary PLAINTEXT credential pairs from the
+    // public 2021 "Compilation of Many Breaches". Older aggregated breach data,
+    // NOT fresh infostealer logs — free, no key. Authorized domains only. ----
+    const combRaw = await fetchText(`https://api.proxynova.com/comb?query=${encodeURIComponent(domain)}&limit=100`, 20000);
+    if (combRaw) {
+      try {
+        const cj = JSON.parse(combRaw) as { count?: number; lines?: string[] };
+        const lines = (cj.lines ?? []).filter((l) => l.toLowerCase().includes(`@${domain.toLowerCase()}`));
+        yield push({ type: "stat", key: "combRecords", value: lines.length });
+        yield { type: "log", phase: "breach", message: `ProxyNova COMB → ${lines.length} plaintext pair(s)${cj.count ? ` (of ~${cj.count} raw matches)` : ""}` };
+        if (lines.length) {
+          const cev = await saveEvidence(dir, "proxynova-comb.txt", lines.join("\n"));
+          yield push({ type: "evidence", file: cev });
+          yield push(
+            finding(
+              "breach",
+              "medium",
+              `${lines.length} plaintext credential pair(s) in the COMB breach compilation`,
+              "Email:password pairs for this domain found in the public 'Compilation of Many Breaches' (COMB, ~2021) — aggregated from older breaches, NOT fresh infostealer logs like the Hudson Rock result above. Shown in plaintext because this data is already public. Treat any still-valid password as compromised and force a reset. Full set in the proxynova-comb.txt evidence file.",
+              lines.slice(0, 20).join("\n")
+            )
+          );
+        }
+      } catch {
+        yield { type: "log", phase: "breach", message: "could not parse ProxyNova COMB response" };
+      }
+    }
+
+    yield { type: "phase", id: "breach", status: "done" };
   }
 
   // ---------- Phase 2b: DNS & email security ----------
@@ -641,5 +671,8 @@ export async function* runScan(domain: string, opts: ScanOpts): AsyncGenerator<S
   await saveEvidence(dir, "findings.csv", toCsv(report.findings));
   report.evidenceFiles.push("findings.csv");
   await saveEvidence(dir, "report.json", JSON.stringify(report, null, 2));
+  // Mirror artifacts to shared storage (GCS on Cloud Run) so any instance can
+  // serve the report / CSV / evidence downloads. No-op past the local zip in dev.
+  await persistRun(runId);
   yield { type: "done", report };
 }

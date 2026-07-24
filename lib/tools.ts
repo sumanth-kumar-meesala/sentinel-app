@@ -2,7 +2,10 @@ import { spawn } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-export const RUNS_DIR = path.join(process.cwd(), "runs");
+// Local scratch dir for CLI tool I/O and run assembly. Override with RUNS_DIR
+// (e.g. a writable path on the host). Persisted artifacts are additionally
+// mirrored to GCS by lib/storage.ts when GCS_BUCKET is set.
+export const RUNS_DIR = process.env.RUNS_DIR || path.join(process.cwd(), "runs");
 
 // Augmented PATH: prefer go-installed bins (~/go/bin) so projectdiscovery httpx
 // wins over the Python "httpx" in /opt/homebrew/bin; include pipx (~/.local/bin).

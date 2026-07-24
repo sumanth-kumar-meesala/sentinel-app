@@ -1,13 +1,7 @@
-import { readdir, readFile } from "node:fs/promises";
-import path from "node:path";
 import type {
   Report, Severity, DimensionScore, Analytics, Correlation,
   Trend, PriorityItem, GraphNode, GraphEdge, Finding,
 } from "./types";
-
-// ponytail: inlined from tools.ts (one hardcoded line, no config) so this module has no
-// runtime cross-.ts import — `node --test` can't resolve extensionless "./tools". Re-import if RUNS_DIR ever becomes configurable.
-const RUNS_DIR = path.join(process.cwd(), "runs");
 
 export const clamp01 = (n: number) => Math.max(0, Math.min(100, n));
 
@@ -161,21 +155,6 @@ const PHASE_EFFORT: Record<string, PriorityItem["effort"]> = {
   breach: "high", secrets: "medium", subdomains: "medium", cloud: "medium",
   dns: "low", tls: "low", phishing: "medium", assets: "low", active: "high", recon: "low", emails: "low",
 };
-
-export async function findPriorRun(domain: string, currentRunId: string): Promise<Report | null> {
-  let entries: string[] = [];
-  try { entries = await readdir(RUNS_DIR); } catch { return null; }
-  const candidates: Report[] = [];
-  for (const e of entries) {
-    if (e === currentRunId || e.endsWith(".zip")) continue;
-    try {
-      const j = JSON.parse(await readFile(path.join(RUNS_DIR, e, "report.json"), "utf8")) as Report;
-      if (j.domain === domain && j.finishedAt) candidates.push(j);
-    } catch { /* skip unreadable run */ }
-  }
-  candidates.sort((a, b) => b.finishedAt.localeCompare(a.finishedAt));
-  return candidates[0] ?? null;
-}
 
 export function buildTrend(current: Report, prior: Report, currentScore: number): Trend {
   const priorScore = prior.analytics?.score ?? 0;
