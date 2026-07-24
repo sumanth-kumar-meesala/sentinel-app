@@ -1,0 +1,172 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: all;
+}
+
+/* ── Sentinel: a dark security-operations theme (default) ───────────── */
+@plugin "daisyui/theme" {
+  name: "sentinel";
+  default: true;
+  color-scheme: dark;
+
+  --color-base-100: #10151d;   /* panels */
+  --color-base-200: #0c1017;   /* inset  */
+  --color-base-300: #080b10;   /* canvas */
+  --color-base-content: #d6deea;
+
+  --color-neutral: #1a2230;
+  --color-neutral-content: #d6deea;
+
+  --color-primary: #35d4bd;    /* signal teal */
+  --color-primary-content: #04130f;
+  --color-secondary: #8697b0;
+  --color-secondary-content: #0b0f15;
+  --color-accent: #34d399;
+  --color-accent-content: #04130d;
+
+  --color-info: #4f9dff;
+  --color-info-content: #04101f;
+  --color-success: #34d399;
+  --color-success-content: #04130d;
+  --color-warning: #f5b13d;
+  --color-warning-content: #1a1204;
+  --color-error: #ff5c6c;
+  --color-error-content: #1a0407;
+
+  --radius-selector: 0.375rem;
+  --radius-field: 0.375rem;
+  --radius-box: 0.625rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+/* ── Design tokens (theme-aware so every daisyUI theme stays coherent) ─ */
+:root {
+  --hairline: color-mix(in oklab, var(--color-base-content) 12%, transparent);
+  --hairline-strong: color-mix(in oklab, var(--color-base-content) 22%, transparent);
+  --sev-critical: #ff4d57;
+  --sev-high: #ff7a45;
+  --sev-medium: #f5a524;
+  --sev-low: #4f9dff;
+  --sev-info: color-mix(in oklab, var(--color-base-content) 55%, transparent);
+  --sev-clean: #22b473;
+}
+
+* { border-color: var(--hairline); }
+
+html, body { background: var(--color-base-300); }
+body {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  color: var(--color-base-content);
+  letter-spacing: -0.011em;
+}
+.mono, .font-mono { font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* ── Atmosphere: layered radial depth + fine grid ───────────────────── */
+.atmosphere {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(70rem 40rem at 12% -8%, color-mix(in oklab, var(--color-primary) 14%, transparent), transparent 60%),
+    radial-gradient(60rem 40rem at 100% 0%, color-mix(in oklab, var(--color-info) 10%, transparent), transparent 55%),
+    linear-gradient(180deg, color-mix(in oklab, var(--color-base-200) 70%, var(--color-base-300)) 0%, var(--color-base-300) 42%);
+}
+.atmosphere::after {
+  content: ""; position: absolute; inset: 0;
+  background-image:
+    linear-gradient(var(--hairline) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hairline) 1px, transparent 1px);
+  background-size: 52px 52px;
+  mask-image: radial-gradient(80rem 60rem at 30% 0%, #000 0%, transparent 70%);
+  opacity: 0.5;
+}
+
+/* ── Reusable surfaces ──────────────────────────────────────────────── */
+.panel {
+  background: linear-gradient(180deg, color-mix(in oklab, var(--color-base-100) 92%, #fff 2%), var(--color-base-100));
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-box);
+  box-shadow: 0 1px 0 color-mix(in oklab, #fff 5%, transparent) inset, 0 20px 40px -24px rgba(0,0,0,0.8);
+}
+.eyebrow {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.68rem; letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--color-primary);
+}
+.hairline { border-color: var(--hairline); }
+
+/* Severity accent helpers (set --sev via inline style or class) */
+.sev-critical { --sev: var(--sev-critical); }
+.sev-high { --sev: var(--sev-high); }
+.sev-medium { --sev: var(--sev-medium); }
+.sev-low { --sev: var(--sev-low); }
+.sev-info { --sev: var(--sev-info); }
+.sev-clean { --sev: var(--sev-clean); }
+
+.finding-card {
+  position: relative;
+  background: var(--color-base-200);
+  border: 1px solid var(--hairline);
+  border-left: 2px solid var(--sev, var(--sev-info));
+  border-radius: 0 var(--radius-field) var(--radius-field) 0;
+}
+.sev-chip {
+  display: inline-flex; align-items: center; align-self: flex-start; flex: 0 0 auto;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--sev, var(--sev-info));
+  border: 1px solid color-mix(in oklab, var(--sev, var(--sev-info)) 40%, transparent);
+  background: color-mix(in oklab, var(--sev, var(--sev-info)) 12%, transparent);
+  padding: 0.12rem 0.5rem; border-radius: 999px; white-space: nowrap; line-height: 1.4;
+}
+
+/* Console log block */
+.console {
+  background: color-mix(in oklab, var(--color-base-300) 82%, #000 18%);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-field);
+  font-family: var(--font-mono), monospace;
+}
+.evidence {
+  background: color-mix(in oklab, var(--color-base-300) 85%, #000 12%);
+  border: 1px solid var(--hairline);
+}
+.console-bar {
+  border-bottom: 1px solid var(--hairline);
+  background: color-mix(in oklab, var(--color-base-200) 70%, transparent);
+}
+
+/* Timeline */
+.tl-dot { box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-base-300) 80%, transparent); }
+.tl-running { box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-primary) 70%, transparent); animation: pulse-ring 1.6s ease-out infinite; }
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-primary) 55%, transparent); }
+  100% { box-shadow: 0 0 0 12px transparent; }
+}
+
+/* Entrance */
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.rise { animation: rise 0.6s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+.fadein { animation: fadein 0.4s ease both; }
+
+/* Risk ring */
+.risk-ring {
+  border-radius: 50%;
+  background:
+    conic-gradient(var(--sev) calc(var(--pct) * 1%), color-mix(in oklab, #fff 8%, transparent) 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 9px), #000 calc(100% - 8px));
+          mask: radial-gradient(farthest-side, transparent calc(100% - 9px), #000 calc(100% - 8px));
+}
+
+::selection { background: color-mix(in oklab, var(--color-primary) 35%, transparent); }
+
+/* ── Print / PDF: keep the active theme's colors, just hide chrome and
+   avoid awkward breaks. (PDF export uses screen media via puppeteer, so no
+   color overrides here — they would fight the theme.) ────────────────── */
+@media print {
+  .no-print { display: none !important; }
+  .print-area { max-width: none !important; box-shadow: none !important; }
+  table, .finding-card, tr, pre { break-inside: avoid; }
+  @page { margin: 14mm; }
+}
