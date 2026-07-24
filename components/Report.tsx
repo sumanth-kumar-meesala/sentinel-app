@@ -1,5 +1,6 @@
 "use client";
 import { Report, Finding, Severity } from "@/lib/types";
+import RiskGraph from "./RiskGraph";
 
 const SEV_ORDER: Severity[] = ["critical", "high", "medium", "low", "info", "clean"];
 const SEV_VAR: Record<Severity, string> = {
@@ -77,6 +78,9 @@ export default function ReportView({ report, printMode = false }: { report: Repo
             <a className="btn btn-sm gap-1.5 border hairline bg-transparent hover:bg-base-content/5 text-[color:var(--color-base-content)]" href={`/api/evidence/${report.runId}`}>
               <ArchiveIcon /> Evidence
             </a>
+            <a className="btn btn-sm gap-1.5 border hairline bg-transparent hover:bg-base-content/5 text-[color:var(--color-base-content)]" href={`/api/report/${report.runId}/csv`}>
+              CSV
+            </a>
           </div>
         )}
       </div>
@@ -115,6 +119,8 @@ export default function ReportView({ report, printMode = false }: { report: Repo
         ))}
       </div>
 
+      {report.analytics && <AnalyticsSection a={report.analytics} />}
+
       {/* findings */}
       <div className="px-6 py-6">
         <p className="eyebrow mb-3">Findings · {findings.length}</p>
@@ -141,6 +147,14 @@ export default function ReportView({ report, printMode = false }: { report: Repo
       {/* data appendices — full, expanded, stacked (no accordions, no scroll clipping) */}
       {report.subdomains.length > 0 && <DataSection title="Subdomains" count={report.subdomains.length} items={report.subdomains} />}
       {report.emails.length > 0 && <DataSection title="Exposed emails" count={report.emails.length} items={report.emails} />}
+
+      {/* asset graph — interactive only, at the bottom */}
+      {!printMode && report.analytics && report.analytics.graph.nodes.length > 0 && (
+        <div className="px-6 py-6 border-t hairline">
+          <p className="eyebrow mb-2">Asset graph</p>
+          <RiskGraph graph={report.analytics.graph} />
+        </div>
+      )}
 
       {/* footer: tools + evidence */}
       <div className="px-6 py-5 border-t hairline grid sm:grid-cols-2 gap-5" style={{ background: "color-mix(in oklab, var(--color-base-200) 50%, transparent)" }}>
@@ -179,6 +193,83 @@ function DataSection({ title, count, items }: { title: string; count: number; it
           <div key={s} className="break-all py-px" style={{ breakInside: "avoid" }}>{s}</div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function AnalyticsSection({ a }: { a: import("@/lib/types").Analytics }) {
+  const gradeColor = SEV_VAR[a.riskLevel];
+  return (
+    <div className="px-6 py-6 border-t hairline">
+      <p className="eyebrow mb-3">Security posture</p>
+      <div className="flex items-center gap-5 flex-wrap">
+        <div className="text-center">
+          <div className="text-5xl font-bold mono" style={{ color: gradeColor }}>{a.grade}</div>
+          <div className="text-sm mono opacity-70">{a.score}/100</div>
+        </div>
+        {a.trend && (
+          <div className="text-sm">
+            <span className="opacity-70">vs {fmtDate(a.trend.priorDate).slice(0, 10)}: </span>
+            <span style={{ color: a.trend.scoreDelta >= 0 ? "var(--sev-clean)" : "var(--sev-high)" }}>
+              {a.trend.scoreDelta >= 0 ? "▲" : "▼"} {Math.abs(a.trend.scoreDelta)}
+            </span>
+            {a.trend.newFindings.length > 0 && <span className="opacity-70"> · {a.trend.newFindings.length} new</span>}
+            {a.trend.resolvedFindings.length > 0 && <span className="opacity-70"> · {a.trend.resolvedFindings.length} resolved</span>}
+          </div>
+        )}
+      </div>
+
+      {/* dimension bars */}
+      <div className="flex flex-col gap-2.5 mt-5">
+        {a.dimensions.map((d) => (
+          <div key={d.key}>
+            <div className="flex justify-between text-[0.72rem] mb-1">
+              <span className="opacity-80">{d.label} <span className="opacity-50">· {d.weight}%</span></span>
+              <span className="mono opacity-90">{d.score}</span>
+            </div>
+            <div className="h-2.5 rounded-full" style={{ background: "color-mix(in oklab, var(--color-base-content) 8%, transparent)" }}>
+              <div className="h-full rounded-full" style={{ width: `${d.score}%`, background: d.score >= 80 ? "var(--sev-clean)" : d.score >= 60 ? "var(--sev-medium)" : "var(--sev-high)" }} />
+            </div>
+            {d.reasons.length > 0 && <div className="text-[0.62rem] opacity-50 mt-0.5">{d.reasons.join(" · ")}</div>}
+          </div>
+        ))}
+      </div>
+
+      {/* compound risks */}
+      {a.correlations.length > 0 && (
+        <div className="mt-5">
+          <p className="eyebrow mb-2">Compound risks</p>
+          <div className="flex flex-col gap-2">
+            {a.correlations.map((c) => (
+              <div key={c.id} className={`finding-card sev-${c.severity} p-3`}>
+                <div className="flex items-start gap-2">
+                  <span className="sev-chip mt-0.5">{c.severity}</span>
+                  <div>
+                    <div className="font-medium text-sm">{c.title}</div>
+                    <div className="text-[0.68rem] opacity-60 mono mt-0.5">{c.rule} → {c.evidence.slice(0, 3).join(", ")}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* prioritized roadmap */}
+      {a.priorities.length > 0 && (
+        <div className="mt-5">
+          <p className="eyebrow mb-2">Remediation priorities</p>
+          <ol className="flex flex-col gap-1.5">
+            {a.priorities.map((p) => (
+              <li key={p.findingId} className="flex items-start gap-2 text-sm">
+                <span className="sev-chip mt-0.5" style={{ ["--sev" as string]: SEV_VAR[p.severity] }}>{p.severity}</span>
+                <span className="opacity-85 flex-1">{p.action}</span>
+                <span className="text-[0.62rem] opacity-50 mono self-center">effort: {p.effort}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
     </div>
   );
 }

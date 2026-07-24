@@ -132,6 +132,46 @@ export default function ReportDoc({ report }: { report: Report }) {
         ))}
       </section>
 
+      {report.analytics && (
+        <section className="mb-7" style={avoid}>
+          <p className="eyebrow mb-3">Security posture</p>
+          <div className="flex items-center gap-6 mb-4">
+            <div className="text-center">
+              <div className="text-5xl font-bold mono" style={{ color: SEV_VAR[report.analytics.riskLevel] }}>{report.analytics.grade}</div>
+              <div className="text-sm mono opacity-60">{report.analytics.score}/100</div>
+            </div>
+            {report.analytics.trend && (
+              <div className="text-sm">
+                <span className="opacity-60">Since {report.analytics.trend.priorDate.slice(0, 10)}: </span>
+                <span style={{ color: report.analytics.trend.scoreDelta >= 0 ? SEV_VAR.clean : SEV_VAR.high }}>
+                  {report.analytics.trend.scoreDelta >= 0 ? "▲" : "▼"} {Math.abs(report.analytics.trend.scoreDelta)} pts
+                </span>
+                <span className="opacity-60"> · {report.analytics.trend.newFindings.length} new · {report.analytics.trend.resolvedFindings.length} resolved</span>
+              </div>
+            )}
+          </div>
+          <BarList rows={report.analytics.dimensions.map((d) => ({ label: `${d.label} (${d.weight}%)`, value: d.score, color: d.score >= 80 ? SEV_VAR.clean : d.score >= 60 ? SEV_VAR.medium : SEV_VAR.high }))} />
+          {report.analytics.correlations.length > 0 && (
+            <div className="mt-5">
+              <p className="eyebrow mb-2">Compound risks</p>
+              <ol className="flex flex-col gap-2">
+                {report.analytics.correlations.map((c) => (
+                  <li key={c.id} className={`finding-card sev-${c.severity} p-3`} style={avoid}>
+                    <div className="flex items-start gap-2">
+                      <span className="sev-chip mt-0.5">{c.severity}</span>
+                      <div>
+                        <div className="font-semibold text-sm">{c.title}</div>
+                        <div className="text-[0.66rem] opacity-60 mono mt-0.5">{c.evidence.slice(0, 3).join(", ")}</div>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+        </section>
+      )}
+
       {/* charts */}
       <section className="grid grid-cols-2 gap-8 mb-2" style={avoid}>
         <div>
