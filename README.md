@@ -11,11 +11,14 @@ Built with **Next.js 16**, **Tailwind v4**, **DaisyUI 5**.
 |-------|---------|-------|
 | Domain recon & DNS | node `dns`, GitHub public API | — |
 | Breach & infostealer intel | Hudson Rock Cavalier (free API) | — |
+| DNS & email security | node `dns` + DoH | — |
 | Subdomain enumeration & liveness | `crt.sh` + `subfinder` + `httpx` | subfinder/httpx optional |
+| Related-asset discovery | node `dns` (reverse + Cymru ASN) | — |
 | Phishing & typosquat domains | `dnstwist` | dnstwist optional |
 | Exposed cloud storage | `cloud_enum` | cloud_enum optional |
 | Public code & secret leaks | `gh` + `trufflehog` + `gitleaks` | gh authed; trufflehog/gitleaks optional |
 | Employee email exposure | `gh` code search | gh authed |
+| TLS & HTTP security | node `tls` + `fetch` | optional `tlsx` |
 | Active vuln scan | `nuclei` | **domain verification** + nuclei |
 
 Passive phases always run. Any missing tool degrades that phase gracefully (marked *skipped* in the report).
@@ -47,6 +50,19 @@ npm run dev      # http://localhost:3000
 Unlocks the active vuln scan (which touches live servers, so it's gated).
 Open the "Verify domain ownership" section → **Generate token** → add the shown DNS `TXT` record → **Check**.
 The token is a deterministic hash of the domain (no database).
+
+## Analytics
+
+Every report includes a weighted **posture score** (0–100, A–F) across five
+dimensions (breach, attack surface, DNS/email, TLS, secrets) with the penalty
+reasons shown as methodology, a **trend** vs. the previous run of the same
+domain, a **prioritized remediation** roadmap, **compound-risk correlations**
+(e.g. a stolen credential whose login host is live), and an interactive
+**asset graph**. Export findings as CSV at `/api/report/<runId>/csv`.
+
+Optional CLIs `tlsx` (deeper TLS) and `naabu` (port scanning, gated behind
+verification) enhance their phases if installed; the tool degrades gracefully
+without them.
 
 ## Export
 
